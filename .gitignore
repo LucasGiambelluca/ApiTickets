@@ -111,3 +111,52 @@ dump.rdb
 *.pem
 *.key
 *.crt
+
+# ===== DOCUMENTACIÓN Y ARCHIVOS DE DESARROLLO =====
+# Carpeta de documentación completa
+docs/
+
+# Archivos de documentación específicos (mantener README.md)
+INFORME_*.md
+ANALISIS_*.md
+RESUMEN_*.md
+CORRECCIONES_*.md
+DEPLOYMENT.md
+SECURITY_UPGRADE_COMPLETE.md
+UPGRADE_*.md
+QUICK_START.md
+EJEMPLOS_PAYLOADS_JSON.md
+INFORME_ENDPOINTS_TESTING.md
+INFORME_TESTING_FINAL.md
+INFORME_FINAL_CON_DB.md
+
+# Archivos de texto de desarrollo
+API_ENDPOINTS_*.txt
+FRONTEND_GET_STARTED.txt
+GUIA_*.txt
+*.backup.txt
+
+# Archivos de configuración de desarrollo
+.env.backup.*
+.env.production
+
+# Archivos de prueba y testing
+test-*.js
+test-*.json
+create-test-*.js
+create-test-*.json
+
+# Redis portable (solo para desarrollo local)
+redis-portable/
+redis.zip
+
+# Uploads de desarrollo (mantener estructura pero no contenido)
+public/uploads/*
+!public/uploads/.gitkeep
+uploads/*
+!uploads/.gitkeep
+
+# Archivos temporales de desarrollo
+*.backup
+*.old
+*.tmp
