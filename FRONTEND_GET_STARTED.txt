@@ -1,0 +1,207 @@
+=============================================
+Guía para iniciar el Frontend de Ticketera
+=============================================
+
+Objetivo
+- Crear un proyecto frontend independiente (por ejemplo, con React + Vite) que consuma la API de Ticketera.
+- Implementar un flujo ágil: explorar eventos y shows, unirse a la cola, reservar asientos, generar orden, pagar con MercadoPago y ver confirmación.
+
+1) Prerrequisitos
+- Node.js >= 18 y npm >= 8
+- Editor (VSCode recomendado)
+- API Ticketera corriendo en: http://localhost:3000
+- Claves de MercadoPago (usar las de prueba por ahora)
+
+2) Crear el proyecto (React + Vite)
+- Ejecutar:
+  npm create vite@latest ticketera-frontend -- --template react
+  cd ticketera-frontend
+  npm install
+
+3) Dependencias recomendadas
+- Ruteo: react-router-dom
+- HTTP: axios
+- Estado: zustand (o Redux Toolkit)
+- UI: TailwindCSS o MUI (elige una)
+- Utilidades: date-fns, clsx
+- Validación: zod (opcional)
+- Internacionalización: i18next (opcional)
+
+Comandos:
+  npm i react-router-dom axios zustand date-fns clsx
+  (Opcional UI) Tailwind: https://tailwindcss.com/docs/guides/vite
+  (Opcional UI) MUI: npm i @mui/material @emotion/react @emotion/styled
+
+4) Variables de entorno (archivo .env)
+- Crear en la raíz del frontend un archivo .env con:
+  VITE_API_BASE_URL=http://localhost:3000
+  VITE_MERCADOPAGO_PUBLIC_KEY=TEST-xxxxxxxxxxxxxxxx
+
+- En producción, apunta a tu dominio y asegúrate de configurar CORS en el backend (ALLOWED_ORIGINS).
+
+5) Estructura de carpetas sugerida
+  src/
+    api/
+      client.ts (instancia axios base)
+      events.ts
+      shows.ts
+      queue.ts
+      orders.ts
+      payments.ts
+    pages/
+      Home.tsx
+      EventDetail.tsx
+      ShowDetail.tsx
+      Queue.tsx
+      Checkout.tsx
+      OrderSuccess.tsx
+      NotFound.tsx
+    components/
+      EventCard.tsx
+      ShowCard.tsx
+      SeatGrid.tsx
+      Loader.tsx
+      ErrorState.tsx
+      Navbar.tsx
+    state/
+      useCartStore.ts (o useOrderStore.ts)
+      useQueueStore.ts
+    hooks/
+      useApi.ts
+      useAsync.ts
+    styles/
+      globals.css
+    router/
+      index.tsx
+    utils/
+      format.ts
+      constants.ts
+
+6) Configurar cliente HTTP (axios)
+- Base URL: import.meta.env.VITE_API_BASE_URL
+- Timeouts, interceptores de error y de autenticación si aplica.
+
+7) Endpoints clave del backend (referencia)
+- Eventos:
+  GET    /api/events
+  POST   /api/events
+- Shows:
+  GET    /api/shows/:id
+  GET    /api/shows/:id/seats
+  POST   /api/shows/:id/sections (admin)
+- Cola virtual:
+  POST   /api/queue/:showId/join
+  GET    /api/queue/:showId/position?userId=...
+  POST   /api/queue/:showId/process-next (admin)
+- Holds/Reservas:
+  POST   /api/shows/:id/holds  { userId, seats: [ids] }
+  DELETE /api/shows/:id/holds/:holdId (opcional)
+- Órdenes:
+  POST   /api/orders { userId, showId, seats: [...] }
+  GET    /api/orders/:orderId
+- Pagos (MercadoPago):
+  POST   /api/payments/preference { orderId }
+  Webhook: /api/payments/webhook (lo maneja el backend)
+- Health:
+  GET    /health
+
+8) Flujo UI recomendado
+- Home: lista de eventos (GET /api/events)
+- Detalle de evento → lista de shows
+- Detalle de show:
+  - Si el show usa cola: botón “Unirse a la cola” (POST /api/queue/:showId/join)
+  - Pantalla de cola: mostrar posición con polling (GET /api/queue/:showId/position)
+  - Cuando esté habilitado: mostrar asientos disponibles (GET /api/shows/:id/seats)
+  - Selección de asientos → crear hold (POST /api/shows/:id/holds)
+  - Crear orden (POST /api/orders)
+  - Generar preferencia MP (POST /api/payments/preference)
+  - Redirigir a checkout de MP (usar init_point retornado o Bricks)
+  - Al volver (o vía webhook + polling) → pantalla de éxito con resumen
+
+9) Integración de MercadoPago (Frontend)
+- Front debe pedir al backend la preferencia:
+  POST /api/payments/preference { orderId }
+- Respuesta incluye init_point o preferenceId. Opciones:
+  a) Redirigir a init_point (checkout pro/redirect)
+  b) Usar MercadoPago Bricks (JS SDK) con public key (VITE_MERCADOPAGO_PUBLIC_KEY) y preferenceId.
+- Documentación MP Bricks: https://www.mercadopago.com.br/developers/es/docs/checkout-bricks/landing
+- El webhook ya está en el backend; el front solo muestra estado y resultado.
+
+10) Manejo de estado (ejemplo con Zustand)
+- useQueueStore: { position, status, joinQueue(showId, userId), pollPosition() }
+- useOrderStore: { items, total, holdId, setSeats(), createOrder(), paymentUrl }
+- Persistencia mínima en sessionStorage si es necesario.
+
+11) UX/Robustez
+- Loaders y estados vacíos en todas las pantallas.
+- Manejo de errores HTTP (401, 404, 409, 422, 500) con mensajes claros.
+- Reintentos exponenciales en polling de cola (3000 → 5000ms).
+- Deshabilitar botones durante requests idempotentes.
+- Accesibilidad: roles, labels, focus management.
+- Internacionalización (es/en) opcional.
+
+12) Seguridad
+- Nunca exponer tokens privados en el frontend.
+- Usar la public key de MP en el front; el access token va en el backend.
+- Configurar CORS en backend: ALLOWED_ORIGINS con la URL del frontend.
+
+13) Scripts útiles (frontend)
+  npm run dev        # entorno desarrollo (Vite)
+  npm run build      # build de producción
+  npm run preview    # previsualizar build
+
+14) Despliegue del frontend
+- Hosting estático: Netlify, Vercel, GitHub Pages, Cloudflare Pages.
+- Variables de entorno en el hosting:
+  VITE_API_BASE_URL=https://tu-api
+  VITE_MERCADOPAGO_PUBLIC_KEY=PROD-xxxxxxxx
+- Ajustar CORS en backend para el dominio del frontend.
+
+15) Roadmap de pantallas
+- Home (lista de eventos)
+- EventDetail (shows del evento)
+- ShowDetail (asientos + unirse a cola)
+- Queue (posición y avance)
+- Checkout (resumen → pagar)
+- OrderSuccess (confirmación)
+- Admin (opcional): crear evento, shows, secciones
+
+16) Checklist de arranque rápido
+[ ] Crear proyecto Vite React
+[ ] Instalar dependencias (axios, router, zustand)
+[ ] Crear .env con VITE_API_BASE_URL
+[ ] Implementar client axios con baseURL
+[ ] Páginas: Home, EventDetail, ShowDetail
+[ ] Flujo de cola con polling
+[ ] Flujo de hold + order
+[ ] Integración MP (preference desde backend)
+[ ] Pantalla de éxito y manejo de errores
+
+17) Ejemplo de client axios (pseudo)
+- Base: baseURL = import.meta.env.VITE_API_BASE_URL
+- Interceptores: log de errores, headers comunes
+- Reintento simple en 5xx (opcional)
+
+18) Buenas prácticas
+- Componentes pequeños y reutilizables
+- Hooks para lógica de datos (useEvents, useQueue)
+- Tipar respuestas de API (TypeScript recomendado)
+- Testear los flujos críticos (cola, hold, pago)
+
+19) Contacto backend desde front (resumen)
+- GET /api/events → lista eventos
+- GET /api/shows/:id → info show
+- GET /api/shows/:id/seats → asientos
+- POST /api/queue/:showId/join → unirse a cola
+- GET /api/queue/:showId/position?userId=... → posición
+- POST /api/shows/:id/holds → reservar asientos
+- POST /api/orders → crear orden
+- POST /api/payments/preference → preferencia MP
+- GET /health → monitoreo
+
+20) Siguiente paso sugerido
+- Crear el proyecto con Vite, preparar .env y levantar npm run dev.
+- Implementar Home → EventDetail → ShowDetail con llamadas reales.
+- Dejar placeholders para checkout mientras pruebas el flujo hasta generar preference.
+
+Fin de la guía. ¡Éxitos con el frontend! 🚀

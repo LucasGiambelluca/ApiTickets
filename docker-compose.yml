@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # Base de datos MySQL optimizada
+  mysql:
+    image: mysql:8.0
+    container_name: ticketera_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: ticketera
+      MYSQL_USER: app
+      MYSQL_PASSWORD: app
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql:/docker-entrypoint-initdb.d
+      - ./config/mysql.cnf:/etc/mysql/conf.d/custom.cnf
+    networks:
+      - ticketera_network
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 5
+      interval: 10s
+      start_period: 30s
+
+  # Redis optimizado para alta performance
+  redis:
+    image: redis:7-alpine
+    container_name: ticketera_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./config/redis.conf:/usr/local/etc/redis/redis.conf
+    networks:
+      - ticketera_network
+    command: redis-server /usr/local/etc/redis/redis.conf
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 3s
+      retries: 3
+      interval: 5s
+      start_period: 10s
+    sysctls:
+      - net.core.somaxconn=65535
+
+  # Aplicación principal
+  app:
+    build: .
+    container_name: ticketera_app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: app
+      DB_PASSWORD: app
+      DB_NAME: ticketera
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      HOLD_MINUTES: 7
+      QUEUE_MAX_SIZE: 1000
+      QUEUE_TIMEOUT_MINUTES: 15
+      BASE_URL: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3001,https://yourdomain.com
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - ticketera_network
+    volumes:
+      - ./logs:/app/logs
+
+  # Nginx (opcional, para producción)
+  nginx:
+    image: nginx:alpine
+    container_name: ticketera_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - app
+    networks:
+      - ticketera_network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  ticketera_network:
+    driver: bridge

@@ -1,0 +1,121 @@
+Ticketera - Endpoints Backend y Módulos Frontend
+=================================================
+
+Base URL Backend
+- Desarrollo: http://localhost:3000
+- API Base:   http://localhost:3000/api
+ - Puerto API: 3000 (configurable con variable de entorno PORT)
+   - Para cambiarlo, en .env: PORT=4000 (ejemplo)
+   - Recuerda ajustar ALLOWED_ORIGINS con el nuevo puerto del frontend si aplica
+
+Notas de CORS
+- Variable .env: ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
+- Si se usa otra URL para el front, agregarla a ALLOWED_ORIGINS (separadas por coma)
+
+Health
+- GET /health  -> Health check detallado (Redis, DB, cola)
+
+Eventos (/api/events)
+- GET  /api/events                    | Lista paginada y filtrada
+  Query: page, limit, search, status (active|all), sortBy (name|created_at|id), sortOrder (ASC|DESC)
+- GET  /api/events/search             | Búsqueda rápida (autocomplete)
+  Query: q, limit (default 10)
+- POST /api/events                    | Crear evento + show inicial
+  Body: { name: string, startsAt: ISODateString, venue?: string }
+
+Shows (/api/shows)
+- GET  /api/shows/:id                 | Obtener info de un show
+- GET  /api/shows/:id/seats           | Obtener asientos de un show
+- POST /api/shows/:showId/sections    | Crear secciones (admin)
+  Body: { name: string, capacity: number, priceCents: number }
+
+Cola Virtual (/api/queue)
+- POST /api/queue/:showId/join        | Unirse a la cola
+  Body: { userId: string }
+- GET  /api/queue/:showId/position    | Posición en la cola
+  Query: userId
+- POST /api/queue/:showId/process-next| Procesar siguiente (admin)
+- GET  /api/queue/:showId/stats       | Estadísticas (admin)
+
+Reservas/Holds (/api/shows/:id/holds)
+- POST   /api/shows/:id/holds         | Crear reserva de asientos
+  Body: { userId: string, seats: number[] }
+- DELETE /api/shows/:id/holds/:holdId | Eliminar reserva
+
+Órdenes (/api/orders)
+- POST /api/orders                     | Crear orden
+  Body: { userId: string, showId: number, seats: number[] }
+- GET  /api/orders/:orderId            | Obtener orden
+- GET  /api/orders                     | Listar órdenes (admin)
+  Query: page, limit, status, userId
+
+Pagos MercadoPago (/api/payments)
+- POST /api/payments/preference        | Crear preferencia de pago
+  Body: { orderId: number }
+- POST /api/payments/webhook           | Webhook (lo usa MP)
+- GET  /api/payments/:paymentId        | Obtener estado de pago
+- POST /api/payments/:paymentId/refund | Reembolso (admin)
+
+Admin (/api/admin)
+- GET  /api/admin/settings/fixed-fee         | Obtener tarifa fija
+- PUT  /api/admin/settings/fixed-fee         | Guardar tarifa fija
+  Body: { fixedFeeCents: number }
+- GET  /api/admin/settings/mercadopago       | Obtener configuración MP (token enmascarado)
+- PUT  /api/admin/settings/mercadopago       | Guardar configuración MP
+  Body: { accessToken: string, publicKey: string, collectorId?: string }
+- POST /api/admin/settings/mercadopago/test  | Probar conexión a MP
+
+Productores (/api/producers)
+- GET    /api/producers                 | Listar productores
+- POST   /api/producers                 | Crear productor
+- GET    /api/producers/:id             | Obtener productor
+- PUT    /api/producers/:id             | Actualizar productor
+- DELETE /api/producers/:id             | Eliminar productor
+
+Venues (/api/venues)
+- GET    /api/venues                    | Listar venues
+- POST   /api/venues                    | Crear venue
+- GET    /api/venues/:id                | Obtener venue
+- PUT    /api/venues/:id                | Actualizar venue
+- DELETE /api/venues/:id                | Eliminar venue
+
+=================================================
+Módulos Frontend Recomendados
+=================================================
+
+Archivos provistos en /public (listos para usar):
+- public/api-complete.js
+  - Clients: eventsApi, showsApi, queueApi, holdsApi, ordersApi, paymentsApi, adminApi, producersApi, venuesApi, healthApi
+- public/components.js
+  - Componentes: ShowDetailsComponent, QueueComponent, ProducersComponent, VenuesComponent, OrdersComponent
+- public/components.css
+  - Estilos para los componentes anteriores
+- public/utils.js
+  - Utilidades: formatDate, formatCurrency, storage/session helpers, debounce/throttle, manejo de errores, helpers de formularios
+
+Cómo incluirlos en el HTML (si el front no usa bundler):
+  <link rel="stylesheet" href="/components.css" />
+  <script src="/utils.js"></script>
+  <script src="/api-complete.js"></script>
+  <script src="/components.js"></script>
+
+Integraciones clave para el Front
+- Home: GET /api/events (status=active) y GET /api/events/search (q)
+- Detalle de Evento/Show: GET /api/shows/:id y GET /api/shows/:id/seats
+- Cola: POST /api/queue/:showId/join y GET /api/queue/:showId/position
+- Checkout: POST /api/orders -> POST /api/payments/preference (usar publicKey en el front)
+- Admin: 
+  - Configuración MP: GET/PUT/POST /api/admin/settings/mercadopago
+  - Tarifas: GET/PUT /api/admin/settings/fixed-fee
+  - Gestión: productores y venues
+
+Pruebas rápidas con curl
+- Listar eventos: curl "http://localhost:3000/api/events?status=all"
+- Buscar: curl "http://localhost:3000/api/events/search?q=rock"
+- Crear evento: POST /api/events con { name, startsAt, venue }
+
+Observaciones
+- status=active en /api/events sólo devuelve eventos con shows futuros.
+- /api/events/search requiere q con al menos 2 caracteres y considera shows futuros.
+
+Fin del documento.

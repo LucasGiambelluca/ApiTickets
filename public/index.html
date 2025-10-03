@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticketera - Plataforma de Venta de Entradas</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="logo">
+                <i class="fas fa-ticket-alt"></i>
+                <span>Ticketera</span>
+            </div>
+            <nav class="nav">
+                <a href="#home" class="nav-link active">Inicio</a>
+                <a href="#events" class="nav-link">Eventos</a>
+                <a href="#admin" class="nav-link">Admin</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="container">
+                <div class="hero">
+                    <h1>Encuentra los mejores eventos</h1>
+                    <p>Descubre y compra entradas para conciertos, teatro, deportes y más</p>
+                    
+                    <!-- Search Bar -->
+                    <div class="search-container">
+                        <div class="search-box">
+                            <i class="fas fa-search"></i>
+                            <input type="text" id="searchInput" placeholder="Buscar eventos..." autocomplete="off">
+                            <div id="searchResults" class="search-results"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Featured Events -->
+                <div class="events-section">
+                    <h2>Eventos Destacados</h2>
+                    <div id="featuredEvents" class="events-grid">
+                        <!-- Events will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Events Section -->
+        <section id="events" class="section">
+            <div class="container">
+                <h1>Todos los Eventos</h1>
+                
+                <!-- Filters -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="statusFilter">Estado:</label>
+                        <select id="statusFilter">
+                            <option value="active">Activos</option>
+                            <option value="all">Todos</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sortBy">Ordenar por:</label>
+                        <select id="sortBy">
+                            <option value="created_at">Fecha de creación</option>
+                            <option value="name">Nombre</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="sortOrder">Orden:</label>
+                        <select id="sortOrder">
+                            <option value="DESC">Descendente</option>
+                            <option value="ASC">Ascendente</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Events List -->
+                <div id="allEvents" class="events-grid">
+                    <!-- Events will be loaded here -->
+                </div>
+
+                <!-- Pagination -->
+                <div id="pagination" class="pagination">
+                    <!-- Pagination will be loaded here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Admin Section -->
+        <section id="admin" class="section">
+            <div class="container">
+                <h1>Panel de Administración</h1>
+                
+                <div class="admin-tabs">
+                    <button class="tab-button active" data-tab="mp-config">Configuración MercadoPago</button>
+                    <button class="tab-button" data-tab="fees">Tarifas</button>
+                    <button class="tab-button" data-tab="create-event">Crear Evento</button>
+                    <button class="tab-button" data-tab="create-venue">Crear Venue</button>
+                </div>
+
+                <!-- MercadoPago Configuration -->
+                <div id="mp-config" class="tab-content active">
+                    <h2>Configuración de MercadoPago</h2>
+                    <div class="config-status" id="mpStatus">
+                        <!-- Status will be loaded here -->
+                    </div>
+                    
+                    <form id="mpConfigForm" class="config-form">
+                        <div class="form-group">
+                            <label for="accessToken">Access Token:</label>
+                            <input type="password" id="accessToken" placeholder="APP_USR-... o TEST-...">
+                            <small>Token de acceso de tu aplicación MercadoPago</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="publicKey">Public Key:</label>
+                            <input type="text" id="publicKey" placeholder="APP_USR-... o TEST-...">
+                            <small>Clave pública de tu aplicación MercadoPago</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="collectorId">Collector ID (opcional):</label>
+                            <input type="text" id="collectorId" placeholder="ID del recaudador">
+                            <small>ID del recaudador (opcional)</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                            <button type="button" id="testConnection" class="btn btn-secondary">Probar Conexión</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Fees Configuration -->
+                <div id="fees" class="tab-content">
+                    <h2>Configuración de Tarifas</h2>
+                    <form id="feesForm" class="config-form">
+                        <div class="form-group">
+                            <label for="fixedFee">Tarifa Fija (centavos):</label>
+                            <input type="number" id="fixedFee" min="0" placeholder="0">
+                            <small>Tarifa fija en centavos que se agregará a cada transacción</small>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Guardar Tarifa</button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Create Event -->
+                <div id="create-event" class="tab-content">
+                    <h2>Crear Nuevo Evento</h2>
+                    <form id="createEventForm" class="config-form" enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="eventName">Nombre del Evento:</label>
+                            <input type="text" id="eventName" required placeholder="Nombre del evento">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventDescription">Descripción:</label>
+                            <textarea id="eventDescription" rows="3" placeholder="Descripción del evento (opcional)"></textarea>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventImage">Imagen del Evento:</label>
+                            <input type="file" id="eventImage" accept="image/*">
+                            <small>Formatos soportados: JPG, PNG, GIF, WebP (máximo 5MB)</small>
+                            <div id="imagePreview" class="image-preview"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="startsAt">Fecha y Hora de Inicio:</label>
+                            <input type="datetime-local" id="startsAt" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="venueSelect">Venue:</label>
+                            <div class="venue-selector">
+                                <select id="venueSelect">
+                                    <option value="">Seleccionar venue existente...</option>
+                                </select>
+                                <button type="button" id="createVenueBtn" class="btn btn-secondary btn-small">Crear Nuevo Venue</button>
+                            </div>
+                            <input type="text" id="venue" placeholder="O escribir nombre del venue manualmente" style="margin-top: 10px;">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Crear Evento</button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Create Venue Tab -->
+                <div id="create-venue" class="tab-content">
+                    <h2>Crear Nuevo Venue</h2>
+                    <form id="createVenueForm" class="config-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="venueName">Nombre del Venue:</label>
+                                <input type="text" id="venueName" required placeholder="Nombre del venue">
+                            </div>
+                            <div class="form-group">
+                                <label for="venueCapacity">Capacidad Máxima:</label>
+                                <input type="number" id="venueCapacity" required min="1" placeholder="Ej: 500">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="venueAddress">Dirección:</label>
+                            <input type="text" id="venueAddress" required placeholder="Dirección completa">
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="venueCity">Ciudad:</label>
+                                <input type="text" id="venueCity" required placeholder="Ciudad">
+                            </div>
+                            <div class="form-group">
+                                <label for="venueState">Provincia/Estado:</label>
+                                <input type="text" id="venueState" placeholder="Provincia o estado">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="venueCountry">País:</label>
+                                <input type="text" id="venueCountry" value="Argentina" placeholder="País">
+                            </div>
+                            <div class="form-group">
+                                <label for="venuePostalCode">Código Postal:</label>
+                                <input type="text" id="venuePostalCode" placeholder="Código postal">
+                            </div>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="venueLatitude">Latitud (opcional):</label>
+                                <input type="number" id="venueLatitude" step="any" placeholder="-34.6037">
+                            </div>
+                            <div class="form-group">
+                                <label for="venueLongitude">Longitud (opcional):</label>
+                                <input type="number" id="venueLongitude" step="any" placeholder="-58.3816">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="venueDescription">Descripción:</label>
+                            <textarea id="venueDescription" rows="3" placeholder="Descripción del venue (opcional)"></textarea>
+                        </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="venuePhone">Teléfono:</label>
+                                <input type="tel" id="venuePhone" placeholder="Teléfono de contacto">
+                            </div>
+                            <div class="form-group">
+                                <label for="venueEmail">Email:</label>
+                                <input type="email" id="venueEmail" placeholder="Email de contacto">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="venueWebsite">Sitio Web:</label>
+                            <input type="url" id="venueWebsite" placeholder="https://ejemplo.com">
+                        </div>
+                        
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Crear Venue</button>
+                            <button type="button" id="cancelVenueBtn" class="btn btn-secondary">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <script src="utils.js"></script>
+    <script src="components.js"></script>
+    <script src="api.js"></script>
+    <script src="ticket-purchase.js"></script>
+    <script src="reports.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,140 @@
+GUIA SIMPLE: ENDPOINTS, ESTADO DE BD Y COMO USARLOS
+
+Fecha: 2025-09-24 14:22 (-03)
+Proyecto: Ticketera
+
+1) ENDPOINTS PRINCIPALES
+
+- /health (GET)
+  - Que hace: Verifica que la API esté arriba y el estado de servicios (DB, Redis).
+  - Como usar: Navegá a http://localhost:3000/health en el navegador.
+  - Respuesta: status ok/degraded, métricas y estado de servicios.
+
+- /api/events (GET)
+  - Que hace: Lista de eventos con paginación, búsqueda y filtros.
+  - Query params:
+    - page (default 1)
+    - limit (default 20)
+    - search (texto)
+    - status: active | all (default active)
+    - sortBy: name | created_at | id (default created_at)
+    - sortOrder: ASC | DESC (default DESC)
+  - Respuesta: { events: [...], pagination: { page, limit, total, totalPages } }
+  - Uso típico (React): fetch("/api/events?page=1&limit=12&search=rock")
+
+- /api/events/search (GET)
+  - Que hace: Búsqueda rápida (autocomplete) por nombre.
+  - Query params: q (min 2 chars), limit (default 10)
+  - Respuesta: { events: [{ id, name, image_url, venue_name, venue_city, show_count, next_show_date }] }
+
+- /api/events/:id (GET)
+  - Que hace: Devuelve un evento por id con datos de venue y sus shows.
+  - Respuesta: Evento completo con array "shows".
+
+- /api/events (POST)
+  - Que hace: Crea un evento y su primer show.
+  - Body: multipart/form-data si envías imagen, sino JSON también funciona.
+    Campos requeridos: name, startsAt (fecha/hora ISO o parseable)
+    Campos opcionales: venue, venue_id, description, image (archivo)
+  - Respuesta: 201 { eventId, showId, name, ... }
+
+- /api/events/:id (PUT)
+  - Que hace: Actualiza campos del evento (incluida imagen si la envías).
+  - Body: multipart/form-data si envías imagen; si no, JSON.
+  - Respuesta: evento actualizado.
+
+- /api/events/:id (DELETE)
+  - Que hace: Elimina el evento y sus shows asociados. También borra la imagen del disco si existía.
+
+- /api/venues (GET)
+  - Que hace: Lista venues con paginación/filtros. (Actualmente hay un error de columnas, ver Estado BD.)
+  - Nota: También existen /api/venues/:id y /api/venues/search análogos a events.
+
+- /api/payments/* (Pagos MercadoPago)
+  - Rutas disponibles para iniciar pagos y webhooks (ver código en routes/payments.routes.js y controllers/payments.controller.js).
+  - Para desarrollo, primero configurar credenciales en Admin (abajo) o .env.
+
+- /api/admin/settings/mercadopago (GET/PUT) y /api/admin/settings/mercadopago/test (POST)
+  - Que hacen: Guardar/leer credenciales de MP y probar la conexión.
+
+2) ESTADO ACTUAL DE LA BASE DE DATOS
+
+- Conexión general: La API arranca; el health muestra DB con estado degradado en algún momento, pero se pueden abrir conexiones.
+- Tablas usadas por endpoints:
+  - events: existe y se usa (columns típicas: id, name, organizer_id, venue, venue_id, description, image_url, image_filename, created_at).
+  - shows: existe y se usa (columns típicas: id, event_id, starts_at, status, created_at).
+  - venues: se usa, PERO en logs aparece error "Unknown column 'city' in 'field list'" cuando se llama /api/venues. Esto indica que en la tabla venues faltan columnas que el código espera (por ejemplo city, state, country, postal_code). 
+- Redis: al iniciar aparece "Redis not connected" pero luego se conecta OK. Esto afecta solo a tareas de cola, no a los endpoints de eventos.
+
+Recomendación BD inmediata:
+- Ejecutar los scripts de schema/upgrade para crear/actualizar columnas de venues.
+  En package.json están:
+    - npm run db:schema
+    - npm run db:upgrade  (agrega venues/producers/sections)
+    - npm run db:indexes
+    - npm run db:seed
+  Si ya tenés datos, evitá resetear. Al menos corré db:upgrade para crear columnas como city/state.
+
+3) COMO USAR DESDE EL FRONTEND (React)
+
+A) CORS/Origen
+- En .env configurar ALLOWED_ORIGINS con la URL de tu front. Ejemplos:
+  ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+- En desarrollo podés usar ALLOWED_ORIGINS=* (no recomendado en prod).
+
+B) Listar eventos (GET /api/events)
+- Ejemplo (fetch):
+  fetch("http://localhost:3000/api/events?page=1&limit=12&search=", { credentials: "include" })
+    .then(r => r.json())
+    .then(data => setEventos(data.events))
+
+C) Autocomplete (GET /api/events/search)
+- Ejemplo:
+  fetch(`http://localhost:3000/api/events/search?q=${encodeURIComponent(texto)}&limit=10`)
+    .then(r => r.json())
+    .then(data => setSugerencias(data.events))
+
+D) Detalle de evento (GET /api/events/:id)
+- Ejemplo:
+  fetch(`http://localhost:3000/api/events/${id}`)
+    .then(r => r.json())
+    .then(setEvento)
+
+E) Crear evento (POST /api/events)
+- Con imagen (multipart/form-data):
+  const fd = new FormData();
+  fd.append("name", name);
+  fd.append("startsAt", startsAtISO);
+  if (venue) fd.append("venue", venue);
+  if (venueId) fd.append("venue_id", venueId);
+  if (description) fd.append("description", description);
+  if (file) fd.append("image", file);
+  fetch("http://localhost:3000/api/events", { method: "POST", body: fd })
+    .then(r => r.json())
+
+- Sin imagen (JSON):
+  fetch("http://localhost:3000/api/events", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name, startsAt, venue, venue_id, description })
+  }).then(r => r.json())
+
+F) Actualizar evento (PUT /api/events/:id)
+- Igual que crear: si subís imagen, usá FormData; si no, JSON.
+
+G) Eliminar evento (DELETE /api/events/:id)
+- fetch(`/api/events/${id}`, { method: "DELETE" })
+
+H) Venues
+- Hasta que se apliquen upgrades a la BD, /api/venues puede fallar por columnas faltantes.
+- Una vez actualizada la BD, se usa igual que events (lista, búsqueda, detalle, etc.).
+
+Notas útiles
+- Logs detallados fueron agregados en controladores de eventos: ver consola del servidor cuando el front haga GET /api/events y POST /api/events.
+- Archivos clave:
+  - server.js (entrada de la API)
+  - routes/events.routes.js (rutas de eventos)
+  - controllers/events.controller.js (lógica de eventos)
+  - middlewares/uploadImage.js (subida/procesado de imagen) — si falta Sharp, las rutas de eventos funcionan igual pero sin procesar imágenes.
+
+Fin de guía.

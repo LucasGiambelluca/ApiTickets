@@ -1,0 +1,6 @@
+{
+  "name": "Test Venue",
+  "address": "Test Address 123",
+  "city": "Test City",
+  "max_capacity": 1000
+}

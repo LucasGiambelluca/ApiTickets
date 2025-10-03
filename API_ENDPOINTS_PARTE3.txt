@@ -1,0 +1,560 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    DOCUMENTACIÓN API TICKETERA - PARTE 3
+           SECCIONES, REPORTES, RESERVAS, COLA Y PRODUCTORES
+═══════════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 MÓDULO: SECCIONES (Sections)
+Base: /api/shows/:showId/sections
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/shows/:showId/sections
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea sección/localidad para un show y genera asientos
+   Content-Type: application/json
+   
+   URL Params:
+   • showId - ID del show
+   
+   Body:
+   • name       - Nombre de la sección (requerido), ej: "Platea", "Pullman"
+   • capacity   - Cantidad de asientos (requerido, > 0)
+   • priceCents - Precio por asiento en centavos (requerido)
+   • kind       - Tipo: "GA" (General Admission) o "SEATED" (default: "GA")
+   
+   Ejemplo:
+   {
+     "name": "Platea",
+     "capacity": 300,
+     "priceCents": 8000,
+     "kind": "SEATED"
+   }
+   
+   Respuesta 201:
+   {
+     "sectionId": 10,
+     "showId": 50,
+     "name": "Platea",
+     "kind": "SEATED",
+     "capacity": 300,
+     "priceTierId": 25
+   }
+   
+   Funcionalidad:
+   - Crea price_tier automático
+   - Genera N asientos (seat_number 1..N)
+   - Valida capacidad vs máximo del venue
+   
+   Errores:
+   400 - Campos inválidos o kind incorrecto
+   409 - Capacidad excede máximo del venue
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 MÓDULO: REPORTES (Reports)
+Base: /api/reports
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET /api/reports/event/:eventId
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Reporte completo de un evento con métricas detalladas
+   
+   URL Params:
+   • eventId - ID del evento
+   
+   Respuesta 200:
+   {
+     "event": {
+       "id": 10,
+       "name": "Concierto Rock",
+       "description": "...",
+       "venue": {
+         "name": "Teatro Gran Rex",
+         "address": "Av. Corrientes 857",
+         "city": "Buenos Aires",
+         "capacity": 3300
+       },
+       "shows": {
+         "count": 3,
+         "firstShow": "2025-12-01T20:00:00Z",
+         "lastShow": "2025-12-03T20:00:00Z"
+       },
+       "image_url": "/uploads/events/abc.jpg",
+       "created_at": "2025-10-01T10:00:00Z"
+     },
+     
+     "summary": {
+       "totalTicketsAvailable": 900,
+       "totalTicketsSold": 450,
+       "totalTicketsReserved": 25,
+       "ticketsRemaining": 425,
+       "totalRevenue": 367500,
+       "totalRevenueFormatted": "3675.00",
+       "occupancyRate": "50.00",
+       "averageTicketPrice": "81.67",
+       "uniqueCustomers": 280
+     },
+     
+     "ticketTypes": [
+       {
+         "id": 1,
+         "name": "VIP",
+         "description": "Acceso preferencial",
+         "price": "150.00",
+         "priceCents": 15000,
+         "total": 100,
+         "sold": 80,
+         "reserved": 5,
+         "available": 15,
+         "revenue": "12000.00",
+         "revenueCents": 1200000,
+         "soldPercentage": 80.00,
+         "revenueShare": "32.65"
+       }
+     ],
+     
+     "salesTimeline": [
+       {
+         "date": "2025-10-01",
+         "ticketsSold": 45,
+         "revenue": "367.50",
+         "revenueCents": 36750,
+         "uniqueCustomers": 28
+       }
+     ],
+     
+     "topCustomers": [
+       {
+         "name": "Juan Pérez",
+         "email": "juan@example.com",
+         "reservations": 3,
+         "totalTickets": 12,
+         "totalSpent": "1200.00",
+         "totalSpentCents": 120000
+       }
+     ],
+     
+     "analytics": {
+       "priceAnalysis": {
+         "average": "81.67",
+         "maximum": "150.00",
+         "minimum": "50.00",
+         "range": "100.00"
+       },
+       "projections": {
+         "estimatedFinalRevenue": "5200.00",
+         "estimatedFinalTickets": 650,
+         "daysRemaining": 60
+       }
+     },
+     
+     "generatedAt": "2025-10-01T18:30:00Z"
+   }
+   
+   Error 404: Evento no encontrado
+
+
+2. GET /api/reports/events
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Dashboard general de todos los eventos
+   
+   Query Params (opcionales):
+   • page=1          - Número de página
+   • limit=20        - Items por página
+   • sortBy="revenue" - Ordenar: revenue|tickets_sold|occupancy|name|created_at
+   • sortOrder="DESC" - ASC|DESC
+   • dateFrom        - Fecha desde (YYYY-MM-DD)
+   • dateTo          - Fecha hasta (YYYY-MM-DD)
+   
+   Respuesta 200:
+   {
+     "events": [
+       {
+         "id": 10,
+         "name": "Concierto Rock",
+         "venue": {
+           "name": "Teatro Gran Rex",
+           "city": "Buenos Aires"
+         },
+         "shows": {
+           "count": 3,
+           "firstShow": "2025-12-01T20:00:00Z",
+           "lastShow": "2025-12-03T20:00:00Z"
+         },
+         "capacity": 900,
+         "ticketsSold": 450,
+         "ticketsReserved": 25,
+         "ticketsAvailable": 425,
+         "revenue": "3675.00",
+         "revenueCents": 367500,
+         "occupancyRate": 50.00,
+         "image_url": "/uploads/events/abc.jpg",
+         "created_at": "2025-10-01T10:00:00Z"
+       }
+     ],
+     
+     "pagination": {
+       "page": 1,
+       "limit": 20,
+       "total": 50,
+       "totalPages": 3
+     },
+     
+     "summary": {
+       "totalEvents": 50,
+       "totalShows": 150,
+       "totalTicketsSold": 12500,
+       "totalRevenue": "125000.00",
+       "totalRevenueCents": 12500000,
+       "totalCustomers": 8500
+     }
+   }
+
+
+3. GET /api/reports/sales
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Reporte de ventas por período
+   
+   Query Params (opcionales):
+   • period="daily"   - Agrupación: hourly|daily|weekly|monthly
+   • dateFrom         - Fecha desde (default: 30 días atrás)
+   • dateTo           - Fecha hasta (default: hoy)
+   • eventId          - Filtrar por evento específico
+   
+   Respuesta 200:
+   {
+     "period": "daily",
+     "dateRange": {
+       "from": "2025-09-01",
+       "to": "2025-10-01"
+     },
+     "eventId": null,
+     
+     "data": [
+       {
+         "date": "2025-09-01",
+         "transactions": 15,
+         "tickets_sold": 45,
+         "revenue_cents": 367500,
+         "revenue": "3675.00",
+         "unique_customers": 28,
+         "events_with_sales": 3,
+         "avg_transaction_value": "245.00"
+       }
+     ],
+     
+     "summary": {
+       "totalTransactions": 450,
+       "totalTickets": 12500,
+       "totalRevenue": "125000.00",
+       "avgDailyRevenue": "4166.67"
+     }
+   }
+   
+   Períodos:
+   - hourly: Por hora (date + hour)
+   - daily: Por día (date)
+   - weekly: Por semana (year + week)
+   - monthly: Por mes (year + month)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⏰ MÓDULO: RESERVAS DE ASIENTOS (Holds)
+Base: /api/shows/:id/holds
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/shows/:id/holds
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Reserva temporal de asientos específicos
+   Content-Type: application/json
+   
+   URL Params:
+   • id - ID del show
+   
+   Body:
+   • userId  - ID del usuario (requerido)
+   • seats   - Array de IDs de asientos (requerido)
+   • minutes - Minutos de reserva (opcional, default: 7)
+   
+   Ejemplo:
+   {
+     "userId": "user123",
+     "seats": [1001, 1002, 1003],
+     "minutes": 10
+   }
+   
+   Respuesta 200:
+   {
+     "status": "held",
+     "showId": 50,
+     "seats": [1001, 1002, 1003],
+     "expiresAt": "2025-10-01T19:10:00Z"
+   }
+   
+   Funcionalidad:
+   - Bloquea asientos temporalmente
+   - Valida que estén disponibles
+   - Reserva expira automáticamente
+   
+   Errores:
+   404 - Asientos inexistentes
+   409 - Asientos ya reservados o vendidos
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚦 MÓDULO: COLA (Queue)
+Base: /api/queue
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/queue/:showId/join
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Une usuario a la cola de un show
+   Content-Type: application/json
+   
+   URL Params:
+   • showId - ID del show
+   
+   Body:
+   {
+     "userId": "user123",             // requerido
+     "userInfo": {                    // opcional
+       "name": "Juan Pérez",
+       "email": "juan@example.com"
+     }
+   }
+   
+   Respuesta 201:
+   {
+     "message": "Agregado a la cola exitosamente",
+     "showId": 50,
+     "userId": "user123",
+     "position": 15,
+     "queueSize": 50,
+     "estimatedWaitTime": 450
+   }
+   
+   Errores:
+   409 - Usuario ya en cola
+   503 - Cola llena
+
+
+2. GET /api/queue/:showId/position
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene posición del usuario en la cola
+   
+   URL Params:
+   • showId - ID del show
+   
+   Query Params:
+   • userId - ID del usuario (requerido)
+   
+   Respuesta 200:
+   {
+     "showId": 50,
+     "userId": "user123",
+     "position": 15,
+     "estimatedWaitTime": 450,  // segundos (30s por persona)
+     "queueSize": 50
+   }
+   
+   Errores:
+   400 - userId faltante
+   404 - Usuario no está en cola
+
+
+3. POST /api/queue/:showId/process-next
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Procesa siguiente usuario en cola (admin)
+   
+   URL Params:
+   • showId - ID del show
+   
+   Respuesta 200:
+   {
+     "message": "Usuario procesado exitosamente",
+     "userId": "user123",
+     "accessToken": "abc123xyz789",
+     "expiresAt": "2025-10-01T19:15:00Z"
+   }
+   
+   Error 404: Cola vacía
+
+
+4. POST /api/queue/:showId/verify-access
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Verifica token de acceso de usuario
+   Content-Type: application/json
+   
+   URL Params:
+   • showId - ID del show
+   
+   Body:
+   {
+     "userId": "user123",
+     "accessToken": "abc123xyz789"
+   }
+   
+   Respuesta 200:
+   {
+     "hasAccess": true,
+     "message": "Acceso verificado exitosamente"
+   }
+   
+   Error 403: Token inválido o expirado
+
+
+5. DELETE /api/queue/:showId/leave
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Saca usuario de la cola
+   Content-Type: application/json
+   
+   URL Params:
+   • showId - ID del show
+   
+   Body:
+   {
+     "userId": "user123"
+   }
+   
+   Respuesta 200:
+   {
+     "message": "Saliste de la cola exitosamente",
+     "showId": 50,
+     "userId": "user123"
+   }
+
+
+6. GET /api/queue/:showId/status
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene estado general de la cola
+   
+   URL Params:
+   • showId - ID del show
+   
+   Respuesta 200:
+   {
+     "showId": 50,
+     "queueSize": 50,
+     "maxQueueSize": 1000,
+     "isQueueActive": true,
+     "estimatedWaitTime": 1500
+   }
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎬 MÓDULO: PRODUCTORES (Producers)
+Base: /api/producers
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/producers
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea nuevo productor
+   Content-Type: application/json
+   
+   Body:
+   • name          - Nombre (requerido)
+   • contactEmail  - Email contacto (opcional)
+   • ownerUserId   - ID usuario dueño (opcional)
+   
+   Ejemplo:
+   {
+     "name": "Rock Producciones SA",
+     "contactEmail": "info@rockprod.com",
+     "ownerUserId": "user456"
+   }
+   
+   Respuesta 201:
+   {
+     "id": 10,
+     "name": "Rock Producciones SA",
+     "contactEmail": "info@rockprod.com",
+     "ownerUserId": "user456"
+   }
+
+
+2. GET /api/producers/search
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Búsqueda rápida de productores
+   
+   Query Params:
+   • q=""       - Búsqueda por nombre o email (mín 2 caracteres)
+   • limit=10   - Máximo resultados
+   
+   Respuesta 200:
+   {
+     "producers": [
+       {
+         "id": 10,
+         "name": "Rock Producciones SA",
+         "contactEmail": "info@rockprod.com",
+         "createdAt": "2025-01-01T00:00:00Z"
+       }
+     ]
+   }
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                           RESUMEN DE CÓDIGOS HTTP
+═══════════════════════════════════════════════════════════════════════════════
+
+✅ CÓDIGOS DE ÉXITO:
+200 OK        - Solicitud exitosa (GET, PUT, DELETE)
+201 Created   - Recurso creado (POST)
+
+⚠️ CÓDIGOS DE ERROR DEL CLIENTE:
+400 Bad Request          - Validación fallida, parámetros inválidos
+404 Not Found            - Recurso no encontrado
+409 Conflict             - Conflicto (duplicado, stock insuficiente, etc.)
+403 Forbidden            - Acceso denegado
+408 Request Timeout      - Timeout de conexión
+
+❌ CÓDIGOS DE ERROR DEL SERVIDOR:
+500 Internal Server Error - Error inesperado del servidor
+503 Service Unavailable   - Servicio no disponible (ej: cola llena)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+                          NOTAS IMPORTANTES
+═══════════════════════════════════════════════════════════════════════════════
+
+📌 AUTENTICACIÓN:
+La API actualmente NO requiere autenticación JWT para la mayoría de endpoints.
+Algunos endpoints (queue, admin) pueden requerir validación adicional.
+
+📌 IMÁGENES:
+- Endpoints de eventos soportan multipart/form-data
+- Imágenes se almacenan en /uploads/events/
+- URLs públicas en campo image_url
+- Al actualizar/eliminar, imagen anterior se borra
+
+📌 FECHAS:
+- Todas las fechas en formato ISO8601
+- Timestamps en UTC
+- Ejemplos: "2025-12-01T20:00:00Z"
+
+📌 PRECIOS:
+- Almacenados en centavos (price_cents)
+- 1 peso = 100 centavos
+- Ejemplo: $150.00 = 15000 centavos
+
+📌 PAGINACIÓN:
+- page: número de página (1-indexed)
+- limit: items por página
+- Respuesta incluye: page, limit, total, totalPages
+
+📌 SISTEMA DE RESERVAS:
+1. Cliente crea reserva → expira en 15 minutos
+2. Cliente crea preferencia de pago con reservation IDs
+3. MercadoPago redirige a usuario para pagar
+4. Webhook actualiza estado y genera tickets
+5. Si expira sin pagar, reserva se libera automáticamente
+
+📌 SISTEMA DE COLA:
+- Para shows de alta demanda
+- Usuarios esperan en cola virtual
+- Reciben token de acceso temporal
+- Token permite comprar durante ventana de tiempo limitada
+
+═══════════════════════════════════════════════════════════════════════════════
+                               FIN PARTE 3
+═══════════════════════════════════════════════════════════════════════════════

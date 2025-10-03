@@ -1,0 +1,52 @@
+[
+  {
+    "name": "Rock en el Parque 2024",
+    "startsAt": "2024-12-15T20:00:00",
+    "venue": "Parque Centenario"
+  },
+  {
+    "name": "Festival de Jazz",
+    "startsAt": "2024-12-20T19:30:00",
+    "venue": "Teatro Colón"
+  },
+  {
+    "name": "Concierto Sinfónico",
+    "startsAt": "2024-12-25T21:00:00",
+    "venue": "Auditorio Nacional"
+  },
+  {
+    "name": "Noche de Tango",
+    "startsAt": "2024-12-28T22:00:00",
+    "venue": "Café Tortoni"
+  },
+  {
+    "name": "Festival Electrónico",
+    "startsAt": "2025-01-05T23:00:00",
+    "venue": "Costanera Sur"
+  },
+  {
+    "name": "Opera Clásica",
+    "startsAt": "2025-01-10T20:30:00",
+    "venue": "Teatro San Martín"
+  },
+  {
+    "name": "Recital de Piano",
+    "startsAt": "2025-01-15T19:00:00",
+    "venue": "Usina del Arte"
+  },
+  {
+    "name": "Concierto Pop Latino",
+    "startsAt": "2025-01-20T21:30:00",
+    "venue": "Luna Park"
+  },
+  {
+    "name": "Festival Folk",
+    "startsAt": "2025-01-25T18:00:00",
+    "venue": "Centro Cultural Recoleta"
+  },
+  {
+    "name": "Noche de Blues",
+    "startsAt": "2025-01-30T22:30:00",
+    "venue": "Notorious Jazz Club"
+  }
+]

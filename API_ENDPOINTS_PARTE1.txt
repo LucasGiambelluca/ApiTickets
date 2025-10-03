@@ -1,0 +1,487 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    DOCUMENTACIÓN API TICKETERA - PARTE 1
+                        EVENTOS, VENUES Y SHOWS
+═══════════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📅 MÓDULO: EVENTOS (Events)
+Base: /api/events
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET /api/events
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Lista eventos con paginación, filtros y búsqueda
+   
+   Query Params (opcionales):
+   • page=1          - Número de página (default: 1)
+   • limit=20        - Items por página (default: 20)
+   • search=""       - Búsqueda por nombre
+   • status="active" - Filtro: "active" (con shows futuros) o "all"
+   • sortBy="created_at" - Campo orden: name|created_at|id
+   • sortOrder="DESC"    - Orden: ASC|DESC
+   
+   Respuesta 200:
+   {
+     "events": [
+       {
+         "id": 1,
+         "name": "Concierto Rock",
+         "description": "...",
+         "venue": "Teatro Gran Rex",
+         "venue_id": 5,
+         "venue_name": "Teatro Gran Rex",
+         "venue_city": "Buenos Aires",
+         "venue_capacity": 3000,
+         "image_url": "/uploads/events/abc123.jpg",
+         "image_filename": "abc123.jpg",
+         "show_count": 3,
+         "next_show_date": "2025-12-01T20:00:00Z",
+         "last_show_date": "2025-12-03T20:00:00Z",
+         "created_at": "2025-01-15T10:00:00Z"
+       }
+     ],
+     "pagination": {
+       "page": 1,
+       "limit": 20,
+       "total": 50,
+       "totalPages": 3
+     }
+   }
+
+
+2. GET /api/events/search
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Búsqueda rápida para autocomplete (mínimo 2 caracteres)
+   
+   Query Params:
+   • q=""       - Texto de búsqueda (requerido, mín 2 caracteres)
+   • limit=10   - Máximo resultados (default: 10)
+   
+   Respuesta 200:
+   {
+     "events": [
+       {
+         "id": 1,
+         "name": "Concierto Rock",
+         "image_url": "/uploads/events/abc.jpg",
+         "venue_name": "Teatro Gran Rex",
+         "venue_city": "Buenos Aires",
+         "show_count": 3,
+         "next_show_date": "2025-12-01T20:00:00Z"
+       }
+     ]
+   }
+
+
+3. GET /api/events/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene evento específico con información completa
+   
+   URL Params:
+   • id - ID del evento
+   
+   Respuesta 200:
+   {
+     "id": 1,
+     "name": "Concierto Rock",
+     "description": "Gran evento musical...",
+     "venue": "Teatro Gran Rex",
+     "venue_id": 5,
+     "venue_name": "Teatro Gran Rex",
+     "venue_address": "Av. Corrientes 857",
+     "venue_city": "Buenos Aires",
+     "venue_capacity": 3000,
+     "image_url": "/uploads/events/abc123.jpg",
+     "created_at": "2025-01-15T10:00:00Z",
+     "shows": [
+       {
+         "id": 10,
+         "starts_at": "2025-12-01T20:00:00Z",
+         "status": "PUBLISHED",
+         "created_at": "2025-01-15T10:05:00Z"
+       }
+     ]
+   }
+   
+   Error 404: Evento no encontrado
+
+
+4. POST /api/events
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea evento con show inicial (soporta imagen)
+   Content-Type: multipart/form-data
+   
+   Body (form-data):
+   • name         - Nombre del evento (requerido)
+   • startsAt     - Fecha del primer show ISO8601 (requerido)
+   • venue        - Nombre del venue (opcional)
+   • venue_id     - ID del venue (opcional)
+   • description  - Descripción (opcional)
+   • image        - Archivo de imagen (opcional, campo file)
+   
+   Respuesta 201:
+   {
+     "eventId": 15,
+     "showId": 45,
+     "name": "Nuevo Concierto",
+     "venue": "Teatro Colón",
+     "venue_id": 8,
+     "description": "...",
+     "image_url": "/uploads/events/xyz789.jpg",
+     "startsAt": "2025-12-15T21:00:00Z"
+   }
+   
+   Errores:
+   400 - Faltan campos requeridos
+   500 - Error al procesar imagen o crear evento
+
+
+5. PUT /api/events/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Actualiza evento existente (soporta nueva imagen)
+   Content-Type: multipart/form-data
+   
+   URL Params:
+   • id - ID del evento
+   
+   Body (form-data, todos opcionales):
+   • name         - Nuevo nombre
+   • venue        - Nuevo venue
+   • venue_id     - Nuevo venue_id
+   • description  - Nueva descripción
+   • image        - Nueva imagen (reemplaza anterior)
+   
+   Respuesta 200:
+   {
+     "id": 15,
+     "name": "Concierto Actualizado",
+     "venue": "Teatro Colón",
+     "venue_id": 8,
+     "description": "...",
+     "image_url": "/uploads/events/new123.jpg",
+     "venue_name": "Teatro Colón",
+     "venue_city": "Buenos Aires",
+     "created_at": "2025-01-15T10:00:00Z"
+   }
+   
+   Errores:
+   404 - Evento no encontrado
+
+
+6. DELETE /api/events/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Elimina evento, sus shows e imagen asociada
+   
+   URL Params:
+   • id - ID del evento
+   
+   Respuesta 200:
+   {
+     "message": "Evento eliminado correctamente"
+   }
+   
+   Errores:
+   404 - Evento no encontrado
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏢 MÓDULO: VENUES (Lugares)
+Base: /api/venues
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET /api/venues
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Lista venues con paginación y filtros
+   
+   Query Params (opcionales):
+   • page=1        - Número de página
+   • limit=20      - Items por página
+   • search=""     - Búsqueda por nombre
+   • city=""       - Filtro por ciudad exacta
+   • sortBy="name" - Campo: name|city|max_capacity|created_at
+   • sortOrder="ASC" - Orden: ASC|DESC
+   
+   Respuesta 200:
+   {
+     "venues": [
+       {
+         "id": 1,
+         "name": "Teatro Gran Rex",
+         "address": "Av. Corrientes 857",
+         "city": "Buenos Aires",
+         "state": "CABA",
+         "country": "Argentina",
+         "postal_code": "C1043",
+         "latitude": -34.603722,
+         "longitude": -58.381592,
+         "max_capacity": 3300,
+         "description": "Teatro histórico...",
+         "phone": "+54 11 4322-8000",
+         "email": "info@granrex.com.ar",
+         "website": "https://granrex.com.ar",
+         "created_at": "2025-01-01T00:00:00Z",
+         "updated_at": "2025-01-01T00:00:00Z"
+       }
+     ],
+     "pagination": {
+       "page": 1,
+       "limit": 20,
+       "total": 35,
+       "totalPages": 2
+     }
+   }
+
+
+2. GET /api/venues/search
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Búsqueda rápida de venues (autocomplete)
+   
+   Query Params:
+   • q=""       - Texto búsqueda (mín 2 caracteres)
+   • limit=10   - Máximo resultados
+   
+   Respuesta 200:
+   {
+     "venues": [
+       {
+         "id": 1,
+         "name": "Teatro Gran Rex",
+         "city": "Buenos Aires",
+         "max_capacity": 3300,
+         "address": "Av. Corrientes 857"
+       }
+     ]
+   }
+
+
+3. GET /api/venues/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene venue específico
+   
+   URL Params:
+   • id - ID del venue
+   
+   Respuesta 200:
+   {
+     "id": 1,
+     "name": "Teatro Gran Rex",
+     "address": "Av. Corrientes 857",
+     "city": "Buenos Aires",
+     "state": "CABA",
+     "country": "Argentina",
+     "postal_code": "C1043",
+     "latitude": -34.603722,
+     "longitude": -58.381592,
+     "max_capacity": 3300,
+     "description": "...",
+     "phone": "+54 11 4322-8000",
+     "email": "info@granrex.com.ar",
+     "website": "https://granrex.com.ar",
+     "created_at": "2025-01-01T00:00:00Z",
+     "updated_at": "2025-01-01T00:00:00Z"
+   }
+   
+   Error 404: Venue no encontrado
+
+
+4. POST /api/venues
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea nuevo venue
+   Content-Type: application/json
+   
+   Body:
+   • name          - Nombre (requerido)
+   • address       - Dirección (requerido)
+   • city          - Ciudad (requerido)
+   • max_capacity  - Capacidad máxima (requerido, > 0)
+   • state         - Provincia/Estado (opcional)
+   • country       - País (default: "Argentina")
+   • postal_code   - Código postal (opcional)
+   • latitude      - Latitud GPS (opcional)
+   • longitude     - Longitud GPS (opcional)
+   • description   - Descripción (opcional)
+   • phone         - Teléfono (opcional)
+   • email         - Email (opcional)
+   • website       - Sitio web (opcional)
+   
+   Respuesta 201:
+   {
+     "id": 25,
+     "name": "Nuevo Teatro",
+     "address": "Calle Falsa 123",
+     "city": "Córdoba",
+     "state": "Córdoba",
+     "country": "Argentina",
+     "postal_code": null,
+     "latitude": null,
+     "longitude": null,
+     "max_capacity": 500,
+     "description": null,
+     "phone": null,
+     "email": null,
+     "website": null
+   }
+   
+   Errores:
+   400 - Campos requeridos faltantes o capacidad inválida
+
+
+5. PUT /api/venues/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Actualiza venue existente
+   
+   URL Params:
+   • id - ID del venue
+   
+   Body (todos opcionales, enviar solo los que se modifican):
+   • name, address, city, state, country, postal_code
+   • latitude, longitude, max_capacity, description
+   • phone, email, website
+   
+   Respuesta 200:
+   { ...venue actualizado... }
+   
+   Errores:
+   400 - Capacidad inválida o sin campos para actualizar
+   404 - Venue no encontrado
+
+
+6. DELETE /api/venues/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Elimina venue (solo si no tiene eventos asociados)
+   
+   URL Params:
+   • id - ID del venue
+   
+   Respuesta 200:
+   {
+     "message": "Venue eliminado correctamente"
+   }
+   
+   Errores:
+   400 - Venue tiene eventos asociados
+   404 - Venue no encontrado
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎭 MÓDULO: SHOWS (Funciones)
+Base: /api/shows
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/shows
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea nuevo show para un evento
+   Content-Type: application/json
+   
+   Body:
+   • eventId   - ID del evento (requerido)
+   • startsAt  - Fecha/hora ISO8601 (requerido)
+   • status    - Estado: PUBLISHED|DRAFT (default: PUBLISHED)
+   • venueId   - ID venue (opcional, hereda del evento si no se especifica)
+   
+   Respuesta 201:
+   {
+     "message": "Show creado exitosamente",
+     "show": {
+       "id": 50,
+       "event_id": 10,
+       "starts_at": "2025-12-01T20:00:00Z",
+       "status": "PUBLISHED",
+       "created_at": "2025-10-01T15:30:00Z",
+       "eventName": "Concierto Rock",
+       "venue_id": 5,
+       "venue_name": "Teatro Gran Rex",
+       "venue_capacity": 3300
+     }
+   }
+   
+   Errores:
+   400 - Campos faltantes o fecha inválida
+   404 - Evento o venue no encontrado
+   409 - Ya existe show para ese evento en esa fecha/hora
+
+
+2. GET /api/shows
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Lista todos los shows
+   
+   Respuesta 200:
+   [
+     {
+       "id": 50,
+       "event_id": 10,
+       "starts_at": "2025-12-01T20:00:00Z",
+       "status": "PUBLISHED",
+       "eventName": "Concierto Rock",
+       "venue_id": 5,
+       "venueName": "Teatro Gran Rex"
+     }
+   ]
+
+
+3. GET /api/shows/search
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Búsqueda rápida de shows
+   
+   Query Params:
+   • q=""       - Nombre evento o ID show (mín 2 caracteres)
+   • limit=10   - Máximo resultados
+   
+   Respuesta 200:
+   {
+     "shows": [
+       {
+         "id": 50,
+         "event_id": 10,
+         "starts_at": "2025-12-01T20:00:00Z",
+         "status": "PUBLISHED",
+         "eventName": "Concierto Rock"
+       }
+     ]
+   }
+
+
+4. GET /api/shows/:id
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene show específico
+   
+   URL Params:
+   • id - ID del show
+   
+   Respuesta 200:
+   {
+     "id": 50,
+     "event_id": 10,
+     "starts_at": "2025-12-01T20:00:00Z",
+     "status": "PUBLISHED",
+     "eventName": "Concierto Rock",
+     "venue_id": 5,
+     "venueName": "Teatro Gran Rex"
+   }
+   
+   Error 404: Show no encontrado
+
+
+5. GET /api/shows/:id/seats
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Lista asientos de un show
+   
+   URL Params:
+   • id - ID del show
+   
+   Respuesta 200:
+   {
+     "showId": 50,
+     "seats": [
+       {
+         "id": 1001,
+         "sector": "Platea",
+         "rowLabel": "A",
+         "seatNumber": "15",
+         "status": "AVAILABLE",
+         "reservedBy": null,
+         "reservedUntil": null,
+         "priceCents": 5000
+       }
+     ]
+   }

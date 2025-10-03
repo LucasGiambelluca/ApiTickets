@@ -1,0 +1,71 @@
+# MySQL configuration optimizada para Ticketera
+# Configuración de alta performance para sistema de tickets
+
+[mysqld]
+# Configuración básica
+default-storage-engine = InnoDB
+sql_mode = STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO
+
+# Configuración de memoria
+innodb_buffer_pool_size = 256M
+innodb_buffer_pool_instances = 2
+innodb_log_file_size = 64M
+innodb_log_buffer_size = 16M
+innodb_flush_log_at_trx_commit = 2
+innodb_flush_method = O_DIRECT
+
+# Configuración de conexiones
+max_connections = 200
+max_connect_errors = 1000
+connect_timeout = 10
+wait_timeout = 600
+interactive_timeout = 600
+
+# Configuración de queries
+max_allowed_packet = 64M
+tmp_table_size = 32M
+max_heap_table_size = 32M
+query_cache_type = 0
+query_cache_size = 0
+
+# Configuración de tablas
+table_open_cache = 4000
+table_definition_cache = 2000
+
+# Configuración de threads
+thread_cache_size = 50
+thread_stack = 256K
+
+# Configuración de logs
+slow_query_log = 1
+slow_query_log_file = /var/log/mysql/slow.log
+long_query_time = 2
+log_queries_not_using_indexes = 1
+
+# Configuración de binlog
+log_bin = mysql-bin
+binlog_format = ROW
+expire_logs_days = 7
+max_binlog_size = 100M
+
+# Configuración de InnoDB para performance
+innodb_file_per_table = 1
+innodb_open_files = 300
+innodb_io_capacity = 400
+innodb_io_capacity_max = 2000
+innodb_read_io_threads = 4
+innodb_write_io_threads = 4
+innodb_thread_concurrency = 0
+innodb_lock_wait_timeout = 120
+innodb_deadlock_detect = 1
+
+# Configuración de charset
+character_set_server = utf8mb4
+collation_server = utf8mb4_unicode_ci
+init_connect = 'SET NAMES utf8mb4'
+
+# Configuración de timezone
+default_time_zone = '+00:00'
+
+# Configuración de seguridad
+local_infile = 0

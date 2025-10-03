@@ -1,0 +1,480 @@
+═══════════════════════════════════════════════════════════════════════════════
+                    DOCUMENTACIÓN API TICKETERA - PARTE 2
+              ADMIN, TIPOS DE TICKETS, ÓRDENES Y PAGOS
+═══════════════════════════════════════════════════════════════════════════════
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚙️ MÓDULO: ADMINISTRACIÓN
+Base: /api/admin
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET /api/admin/settings/fixed-fee
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene tarifa fija por ticket
+   
+   Respuesta 200:
+   {
+     "fixedFeeCents": 150
+   }
+
+
+2. PUT /api/admin/settings/fixed-fee
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Configura tarifa fija por ticket
+   Content-Type: application/json
+   
+   Body:
+   • fixedFeeCents - Tarifa en centavos (requerido)
+   
+   Respuesta 200:
+   {
+     "ok": true,
+     "fixedFeeCents": 150
+   }
+
+
+3. GET /api/admin/settings/mercadopago
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene configuración de MercadoPago (token enmascarado)
+   
+   Respuesta 200:
+   {
+     "accessToken": "APP_USR-********-1234",
+     "publicKey": "APP_USR-xxxx-xxxx-xxxx",
+     "collectorId": "123456789",
+     "isConfigured": true,
+     "hasAccessToken": true
+   }
+
+
+4. PUT /api/admin/settings/mercadopago
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Configura credenciales de MercadoPago
+   Content-Type: application/json
+   
+   Body:
+   • accessToken  - Access token MP (requerido, APP_USR- o TEST-)
+   • publicKey    - Public key MP (requerido, APP_USR- o TEST-)
+   • collectorId  - Collector ID (opcional)
+   
+   Validaciones:
+   - Tokens deben empezar con APP_USR- (producción) o TEST- (sandbox)
+   - Ambas credenciales deben ser del mismo entorno
+   
+   Respuesta 200:
+   {
+     "ok": true,
+     "message": "Configuración de MercadoPago guardada exitosamente",
+     "environment": "production"  // o "sandbox"
+   }
+   
+   Errores:
+   400 - Formato de token inválido o entornos incompatibles
+
+
+5. POST /api/admin/settings/mercadopago/test
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Prueba conexión con API de MercadoPago
+   
+   Respuesta 200:
+   {
+     "ok": true,
+     "message": "Conexión exitosa con MercadoPago",
+     "accountInfo": {
+       "siteId": "MLA",
+       "countryId": "AR",
+       "categoryId": "..."
+     }
+   }
+   
+   Errores:
+   400 - No hay access token o error de conexión
+   408 - Timeout
+   500 - Error interno
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎫 MÓDULO: TIPOS DE TICKETS
+Base: /api/events/:eventId/ticket-types
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. GET /api/events/:eventId/ticket-types
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Lista tipos de tickets de un evento
+   
+   URL Params:
+   • eventId - ID del evento
+   
+   Respuesta 200:
+   {
+     "event": {
+       "id": 10,
+       "name": "Concierto Rock"
+     },
+     "ticketTypes": [
+       {
+         "id": 1,
+         "name": "VIP",
+         "description": "Acceso preferencial",
+         "price_cents": 15000,
+         "price": 150.00,
+         "quantity_total": 100,
+         "quantity_sold": 45,
+         "quantity_reserved": 5,
+         "available": 50,
+         "sale_start": "2025-11-01T00:00:00Z",
+         "sale_end": "2025-12-01T18:00:00Z",
+         "is_active": true,
+         "isOnSale": true,
+         "availability": "available",
+         "created_at": "2025-10-01T10:00:00Z"
+       }
+     ]
+   }
+   
+   Estados availability:
+   - "inactive" - No activo
+   - "not_started" - Venta no comenzó
+   - "ended" - Venta finalizada
+   - "sold_out" - Agotado
+   - "low_stock" - Stock bajo (≤10%)
+   - "available" - Disponible
+   
+   Error 404: Evento no encontrado
+
+
+2. POST /api/events/:eventId/ticket-types
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea tipos de tickets para un evento
+   Content-Type: application/json
+   
+   URL Params:
+   • eventId - ID del evento
+   
+   Body:
+   {
+     "types": [
+       {
+         "name": "VIP",                    // requerido
+         "description": "...",              // opcional
+         "price_cents": 15000,             // requerido, >= 0
+         "quantity_total": 100,            // requerido, >= 1
+         "sale_start": "2025-11-01T00:00:00Z",  // opcional
+         "sale_end": "2025-12-01T18:00:00Z",    // opcional
+         "is_active": true                 // opcional, default: true
+       },
+       {
+         "name": "General",
+         "price_cents": 8000,
+         "quantity_total": 500
+       }
+     ]
+   }
+   
+   Respuesta 201:
+   {
+     "message": "Tipos de tickets creados exitosamente",
+     "eventId": 10,
+     "ticketTypes": [
+       {
+         "id": 1,
+         "name": "VIP",
+         "description": "...",
+         "price_cents": 15000,
+         "quantity_total": 100,
+         "available": 100,
+         "sale_start": "2025-11-01T00:00:00Z",
+         "sale_end": "2025-12-01T18:00:00Z",
+         "is_active": true
+       }
+     ],
+     "totalCapacityAdded": 600
+   }
+   
+   Errores:
+   400 - Validación fallida
+   404 - Evento no encontrado
+
+
+3. POST /api/tickets/reserve
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea reserva temporal de tickets (expira en 15 minutos)
+   Content-Type: application/json
+   
+   Body:
+   {
+     "eventId": 10,
+     "tickets": [
+       {
+         "typeId": 1,      // ID del tipo de ticket
+         "quantity": 2     // Cantidad (1-10)
+       },
+       {
+         "typeId": 2,
+         "quantity": 3
+       }
+     ],
+     "customerInfo": {
+       "name": "Juan Pérez",              // requerido
+       "email": "juan@example.com",       // requerido
+       "phone": "+54 11 1234-5678"        // opcional
+     }
+   }
+   
+   Respuesta 201:
+   {
+     "reservationIds": [100, 101],
+     "reservations": [
+       {
+         "id": 100,
+         "ticketTypeId": 1,
+         "ticketTypeName": "VIP",
+         "quantity": 2,
+         "unitPrice": 15000,
+         "subtotal": 30000,
+         "expiresAt": "2025-10-01T19:00:00Z"
+       }
+     ],
+     "customer": {
+       "name": "Juan Pérez",
+       "email": "juan@example.com",
+       "phone": "+54 11 1234-5678"
+     },
+     "totalAmount": 54000,
+     "totalAmountFormatted": "540.00",
+     "expiresAt": "2025-10-01T19:00:00Z",
+     "message": "Reserva creada exitosamente. Tienes 15 minutos..."
+   }
+   
+   Errores:
+   400 - Validación o ticket no en venta
+   404 - Tipo de ticket no encontrado
+   409 - Stock insuficiente
+
+
+4. GET /api/tickets/reservations/:reservationId
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene información de una reserva
+   
+   URL Params:
+   • reservationId - ID de la reserva
+   
+   Respuesta 200:
+   {
+     "id": 100,
+     "eventId": 10,
+     "eventName": "Concierto Rock",
+     "ticketType": {
+       "id": 1,
+       "name": "VIP",
+       "price": 15000
+     },
+     "quantity": 2,
+     "totalAmount": 30000,
+     "customer": {
+       "name": "Juan Pérez",
+       "email": "juan@example.com",
+       "phone": "+54 11 1234-5678"
+     },
+     "status": "ACTIVE",
+     "expiresAt": "2025-10-01T19:00:00Z",
+     "createdAt": "2025-10-01T18:45:00Z",
+     "isExpired": false
+   }
+   
+   Error 404: Reserva no encontrada
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🛒 MÓDULO: ÓRDENES (Orders)
+Base: /api/orders
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/orders
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea orden de compra (sistema de asientos reservados)
+   Content-Type: application/json
+   Nota: Requiere middleware de cola (queueAccess)
+   
+   Body:
+   • userId  - ID del usuario (requerido)
+   • showId  - ID del show (requerido)
+   • seats   - Array de IDs de asientos (requerido)
+   
+   Ejemplo:
+   {
+     "userId": "user123",
+     "showId": 50,
+     "seats": [1001, 1002, 1003]
+   }
+   
+   Respuesta 200:
+   {
+     "orderId": 500,
+     "status": "PENDING",
+     "totalCents": 15450,
+     "seats": [1001, 1002, 1003],
+     "fixedFeeCents": 150,
+     "message": "Orden creada. Procede al pago para confirmar."
+   }
+   
+   Cálculo total: (precio_asiento + fixed_fee) por cada asiento
+   
+   Errores:
+   404 - Asientos inexistentes
+   409 - Asiento ya vendido o reserva inválida/expirada
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+💳 MÓDULO: PAGOS (Payments)
+Base: /api/payments
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. POST /api/payments/create-preference-reservation
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea preferencia de pago para reservas de tickets
+   Content-Type: application/json
+   
+   Body:
+   {
+     "reservationIds": [100, 101],    // IDs de reservas (requerido)
+     "payer": {
+       "name": "Juan",
+       "surname": "Pérez",             // opcional
+       "email": "juan@example.com",
+       "phone": {                       // opcional
+         "area_code": "11",
+         "number": "12345678"
+       },
+       "identification": {              // opcional
+         "type": "DNI",
+         "number": "12345678"
+       }
+     },
+     "backUrls": {
+       "success": "https://miapp.com/success",
+       "failure": "https://miapp.com/failure",
+       "pending": "https://miapp.com/pending"
+     }
+   }
+   
+   Respuesta 201:
+   {
+     "reservationIds": [100, 101],
+     "preferenceId": "123456789-abcd-1234-abcd-123456789abc",
+     "initPoint": "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=...",
+     "sandboxInitPoint": "https://sandbox.mercadopago.com.ar/checkout/v1/redirect?pref_id=...",
+     "totalAmount": 54000,
+     "totalAmountFormatted": "540.00",
+     "itemCount": 5
+   }
+   
+   Uso: Redirigir al usuario a initPoint para completar el pago
+   
+   Errores:
+   400 - Validación fallida
+   404 - Reservas no encontradas o expiradas
+
+
+2. POST /api/payments/create-preference
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Crea preferencia de pago para orden (sistema anterior)
+   Content-Type: application/json
+   
+   Body:
+   {
+     "orderId": 500,
+     "payer": { ...igual que arriba... },
+     "backUrls": { ...igual que arriba... }
+   }
+   
+   Respuesta 201:
+   {
+     "orderId": 500,
+     "preferenceId": "...",
+     "initPoint": "https://www.mercadopago.com.ar/...",
+     "sandboxInitPoint": "https://sandbox.mercadopago.com.ar/...",
+     "totalAmount": 15450,
+     "itemCount": 3
+   }
+   
+   Errores:
+   400 - Validación fallida
+   404 - Orden no encontrada o ya procesada
+
+
+3. POST /api/payments/webhook
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Webhook de MercadoPago (notificaciones de pago)
+   Nota: Este endpoint es llamado automáticamente por MercadoPago
+   
+   Body: Automático de MercadoPago
+   
+   Funcionalidad:
+   - Procesa notificaciones de pago
+   - Actualiza estado de órdenes/reservas
+   - Genera tickets cuando el pago es aprobado
+   - Libera asientos si el pago es rechazado
+   
+   Respuesta 200:
+   {
+     "received": true,
+     "processed": true
+   }
+   
+   Estados procesados:
+   - "approved" → Genera tickets
+   - "cancelled" / "rejected" → Libera recursos
+
+
+4. GET /api/payments/status/:orderId
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Obtiene estado de pago de una orden
+   
+   URL Params:
+   • orderId - ID de la orden
+   
+   Respuesta 200:
+   {
+     "orderId": 500,
+     "paymentId": "123456789",
+     "status": "approved",
+     "orderStatus": "PAID",
+     "amount": 15450,
+     "approvedAt": "2025-10-01T19:05:00Z",
+     "createdAt": "2025-10-01T19:00:00Z"
+   }
+   
+   Error 404: Pago no encontrado
+
+
+5. POST /api/payments/refund/:orderId
+   ─────────────────────────────────────────────────────────────────────────
+   Descripción: Reembolsa un pago
+   Content-Type: application/json
+   
+   URL Params:
+   • orderId - ID de la orden
+   
+   Body:
+   • amount - Monto a reembolsar en pesos (opcional, null = total)
+   • reason - Motivo del reembolso (requerido)
+   
+   Ejemplo:
+   {
+     "amount": 100.00,
+     "reason": "Cancelación solicitada por el cliente"
+   }
+   
+   Respuesta 200:
+   {
+     "orderId": 500,
+     "refundId": "987654321",
+     "amount": 100.00,
+     "status": "approved",
+     "message": "Reembolso procesado exitosamente"
+   }
+   
+   Errores:
+   404 - Pago no encontrado o no aprobado
+   500 - Error al procesar reembolso
